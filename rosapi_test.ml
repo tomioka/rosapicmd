@@ -47,7 +47,7 @@ let validate_endpoint e =
               (String.concat ~sep:", " endpoints)))
 
 let connect endpoint url language proto host port local_connection adm_output
-    input devel verbose () =
+    input options devel verbose () =
   let uri =
     match url with
     | Some s -> s
@@ -92,6 +92,7 @@ let connect endpoint url language proto host port local_connection adm_output
   | true ->
       Client.get uri ~headers >>= fun (resp, body) -> dump_response resp body
   | false ->
+      (* POST methods *)
       let content =
         match input with
         | Some "-" -> In_channel.input_all In_channel.stdin
@@ -99,6 +100,23 @@ let connect endpoint url language proto host port local_connection adm_output
         | None -> "Boston is warm today."
       in
       let payload = [ ("content", `String content) ] in
+      let payload =
+        match options with
+        | [] -> payload
+        | l ->
+            payload
+            @ [
+                ( "options",
+                  `Assoc
+                    (List.map l ~f:(fun s ->
+                         match String.split s ~on:'=' with
+                         | [ k; v ] -> (k, `String v)
+                         | _ ->
+                             raise
+                               (Invalid_argument ("invalid option spec" ^ s))))
+                );
+              ]
+      in
       let payload =
         match language with
         | Some s -> payload @ [ ("language", `String s) ]
@@ -127,6 +145,8 @@ let () =
            ~doc:"adm output instead of simple response"
       +> flag "--input" ~aliases:[ "-i" ] (optional string)
            ~doc:"input filename of input. '-' for stdin."
+      +> flag "--option" ~aliases:[ "-o" ] (listed string)
+           ~doc:"option request option key=value pair"
       +> flag "--devel" no_arg ~doc:"send X-RosetteAPI-Devel=true"
       +> flag "--verbose" ~aliases:[ "-v" ] no_arg ~doc:"verbose output")
     connect
