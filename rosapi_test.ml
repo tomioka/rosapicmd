@@ -46,12 +46,28 @@ let validate_endpoint e =
            (sprintf "Unknown endpoint %s; expected: %s" e
               (String.concat ~sep:", " endpoints)))
 
-let connect endpoint language local_connection adm_output input devel verbose ()
-    =
+let connect endpoint url language proto host port local_connection adm_output
+    input devel verbose () =
   let uri =
-    match local_connection with
-    | true -> "http://localhost:8181"
-    | false -> "https://api.rosette.com"
+    match url with
+    | Some s -> s
+    | None ->
+        let proto =
+          match proto with
+          | Some s -> s
+          | None -> if local_connection then "http" else "https"
+        in
+        let host =
+          match host with
+          | Some s -> s
+          | None -> if local_connection then "localhost" else "api.rosette.com"
+        in
+        let port =
+          match port with
+          | Some s -> sprintf ":%s" s
+          | None -> if local_connection then "8181" else ""
+        in
+        sprintf "%s://%s%s" proto host port
   in
   let uri = sprintf "%s/rest/v1/%s" uri endpoint |> Uri.of_string in
   let uri =
@@ -99,12 +115,18 @@ let () =
     Spec.(
       empty
       +> anon (map_anons ~f:validate_endpoint ("endpoint" %: string))
+      +> flag "--url" (optional string)
+           ~doc:"url override the url (before \"/rest/v1..\")"
       +> flag "--language" ~aliases:[ "-l" ] (optional string)
            ~doc:"language of input"
+      +> flag "--protocol" (optional string) ~doc:"https or http"
+      +> flag "--host" (optional string) ~doc:"host hostname to connect"
+      +> flag "--port" (optional string) ~doc:"port port number"
       +> flag "--localhost" no_arg ~doc:"connect to localhost"
       +> flag "--adm" ~aliases:[ "-a" ] no_arg
            ~doc:"adm output instead of simple response"
-      +> flag "--input" ~aliases:[ "-i" ] (optional string) ~doc:"input"
+      +> flag "--input" ~aliases:[ "-i" ] (optional string)
+           ~doc:"input filename of input. '-' for stdin."
       +> flag "--devel" no_arg ~doc:"send X-RosetteAPI-Devel=true"
       +> flag "--verbose" ~aliases:[ "-v" ] no_arg ~doc:"verbose output")
     connect
