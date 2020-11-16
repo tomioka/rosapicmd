@@ -38,26 +38,32 @@ let endpoint_of_string = function
 let endpoints = [ "info"; "ping"; "entities"; "morphology/complete"; "tokens" ]
 
 let validate_endpoint e =
-  if List.mem endpoints e ~equal:String.equal then e
-  else
-    raise
-      (Invalid_argument
-         (sprintf "Unknown endpoint %s; expected: %s" e
-            (String.concat ~sep:", " endpoints)))
+  match List.mem endpoints e ~equal:String.equal with
+  | true -> e
+  | false ->
+      raise
+        (Invalid_argument
+           (sprintf "Unknown endpoint %s; expected: %s" e
+              (String.concat ~sep:", " endpoints)))
 
 let connect endpoint language local_connection adm_output input devel verbose ()
     =
   let uri =
-    if local_connection then "http://localhost:8181"
-    else "https://api.rosette.com"
+    match local_connection with
+    | true -> "http://localhost:8181"
+    | false -> "https://api.rosette.com"
   in
   let uri = sprintf "%s/rest/v1/%s" uri endpoint |> Uri.of_string in
   let uri =
-    if adm_output then Uri.with_query uri [ ("output", [ "rosette" ]) ] else uri
+    match adm_output with
+    | true -> Uri.with_query uri [ ("output", [ "rosette" ]) ]
+    | false -> uri
   in
   let headers = [] in
   let headers =
-    if devel then headers @ [ ("X-RosetteAPI-Devel", "true") ] else headers
+    match devel with
+    | true -> headers @ [ ("X-RosetteAPI-Devel", "true") ]
+    | false -> headers
   in
   let headers =
     match Sys.getenv "ROSAPI_KEY" with
@@ -66,25 +72,26 @@ let connect endpoint language local_connection adm_output input devel verbose ()
   in
   let headers = headers |> Header.of_list in
   if verbose then printf "TRACE:%s\n" (Uri.to_string uri);
-  if is_get_endpoint endpoint then
-    Client.get uri ~headers >>= fun (resp, body) -> dump_response resp body
-  else
-    let content =
-      match input with
-      | Some "-" -> In_channel.input_all In_channel.stdin
-      | Some filename -> In_channel.read_all filename
-      | None -> "Boston is warm today."
-    in
-    let payload = [ ("content", `String content) ] in
-    let payload =
-      match language with
-      | Some s -> payload @ [ ("language", `String s) ]
-      | None -> payload
-    in
-    let payload = Yojson.Basic.to_string (`Assoc payload) in
-    if verbose then printf "TRACE:%s\n" payload;
-    Client.post uri ~body:(Body.of_string payload) ~headers
-    >>= fun (resp, body) -> dump_response resp body
+  match is_get_endpoint endpoint with
+  | true ->
+      Client.get uri ~headers >>= fun (resp, body) -> dump_response resp body
+  | false ->
+      let content =
+        match input with
+        | Some "-" -> In_channel.input_all In_channel.stdin
+        | Some filename -> In_channel.read_all filename
+        | None -> "Boston is warm today."
+      in
+      let payload = [ ("content", `String content) ] in
+      let payload =
+        match language with
+        | Some s -> payload @ [ ("language", `String s) ]
+        | None -> payload
+      in
+      let payload = Yojson.Basic.to_string (`Assoc payload) in
+      if verbose then printf "TRACE:%s\n" payload;
+      Client.post uri ~body:(Body.of_string payload) ~headers
+      >>= fun (resp, body) -> dump_response resp body
 
 let () =
   let open Async_command in
