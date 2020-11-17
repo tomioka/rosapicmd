@@ -10,7 +10,7 @@ let dump_response resp body =
   | #success_status -> Body.to_string body >>| fun s -> printf "%s\n" s
   | _ ->
       Body.to_string body >>| fun s ->
-      printf "%s\n%s\n" (string_of_status status) s
+      printf "!!%s\n%s\n" (string_of_status status) s
 
 type endpoint = [ `Info | `Ping | `Entities | `Morphology_complete | `Tokens ]
 [@@deriving sexp]
