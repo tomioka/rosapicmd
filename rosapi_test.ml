@@ -64,8 +64,8 @@ let connect endpoint url language proto host port local_connection adm_output
         in
         let port =
           match port with
-          | Some s -> sprintf ":%s" s
-          | None -> if local_connection then "8181" else ""
+          | Some s -> ":" ^ s
+          | None -> if local_connection then ":8181" else ""
         in
         sprintf "%s://%s%s" proto host port
   in
