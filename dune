@@ -1,5 +1,5 @@
 (executable
-  (name rosapi_test)
+  (name rosapicmd)
   (libraries cohttp-async yojson)
   (preprocess
    (pps ppx_let))
